@@ -1,0 +1,27 @@
+[program]
+
+discriminant = sub(mul(b, b), mul(mul(4, a), c))
+num1 = add(neg(b), sqrt(discriminant))
+num2 = sub(neg(b), sqrt(discriminant))
+r1 = div(num1, mul(2, a))
+r2 = div(num2, mul(2, a))
+program = pair(r1, r2)
+
+[machine]
+
+() A := a
+() B := b
+() C := c
+() _2 := 2
+() _4 := 4
+(#) ADD(a, b) := add(a, b)
+(#) SUB1(a, b) := sub(a, b)
+(#) SUB2(a, b) := add(neg(a), b)
+(#) SUB3(a, b) := add(a, neg(b))
+(##) MUL(a, b) := mul(a, b)
+(###) DIV(a, b) := div(a, b)
+(#) NEG(a) := neg(a)
+(#) SQRT(a) := sqrt(a)
+(#) FMA1(a, b, c) := add(a, mul(b, c))
+(#) FMA2(a, b, c) := add(mul(a, b), c)
+(#) PAIR(a, b) := pair(a, b)
