@@ -1,18 +1,20 @@
-use chumsky::prelude::{IterParser as _, Parser, any, end, group, just, recursive};
-use chumsky::text::Char as _;
-use chumsky::text::{inline_whitespace, newline, whitespace};
+use chumsky::error::Rich;
+use chumsky::prelude::{IterParser as _, Parser, end, group, just, recursive};
+use chumsky::text::{digits, ident, inline_whitespace, newline, whitespace};
 
-fn newlines<'src>() -> impl Parser<'src, &'src str, ()> + Clone {
+type Err<'src> = chumsky::extra::Err<Rich<'src, char>>;
+
+fn newlines<'src>() -> impl Parser<'src, &'src str, (), Err<'src>> + Clone {
     newline().repeated().at_least(1)
 }
 
 #[derive(Clone)]
-pub struct Term {
-    pub label: String,
-    pub children: Vec<Term>, // terms with no children are treated like variables
+pub struct Term<'src> {
+    pub label: &'src str,
+    pub children: Vec<Term<'src>>, // terms with no children are treated like variables
 }
 
-impl std::fmt::Debug for Term {
+impl<'src> std::fmt::Debug for Term<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut t = f.debug_tuple(&self.label);
         for child in &self.children {
@@ -22,19 +24,10 @@ impl std::fmt::Debug for Term {
     }
 }
 
-// Not padded.
-fn identifier<'src>() -> impl Parser<'src, &'src str, &'src str> + Clone {
-    any()
-        .filter(|c: &char| c.is_ident_continue())
-        .repeated()
-        .at_least(1)
-        .to_slice()
-}
-
 // `p` parses an element is assumed padded. The resulting parser is padded on the left only.
 fn argument_list<'src, T>(
-    p: impl Parser<'src, &'src str, T> + Clone,
-) -> impl Parser<'src, &'src str, Option<Vec<T>>> + Clone {
+    p: impl Parser<'src, &'src str, T, Err<'src>> + Clone,
+) -> impl Parser<'src, &'src str, Option<Vec<T>>, Err<'src>> + Clone {
     p.separated_by(just(','))
         .allow_trailing()
         .collect::<Vec<_>>()
@@ -46,10 +39,10 @@ fn argument_list<'src, T>(
 }
 
 // Not padded.
-fn term<'src>() -> impl Parser<'src, &'src str, Term> {
+fn term<'src>() -> impl Parser<'src, &'src str, Term<'src>, Err<'src>> {
     recursive(|term| {
-        identifier()
-            .map(String::from)
+        ident()
+            .or(digits(10).to_slice())
             .then(argument_list(term.padded()))
             .map(|(label, children)| Term {
                 label,
@@ -59,14 +52,13 @@ fn term<'src>() -> impl Parser<'src, &'src str, Term> {
 }
 
 #[derive(Debug)]
-pub struct ProgramLine {
-    pub label: String,
-    pub def: Term,
+pub struct ProgramLine<'src> {
+    pub label: &'src str,
+    pub def: Term<'src>,
 }
 
-fn program_line<'src>() -> impl Parser<'src, &'src str, ProgramLine> {
-    identifier()
-        .map(String::from)
+fn program_line<'src>() -> impl Parser<'src, &'src str, ProgramLine<'src>, Err<'src>> {
+    ident()
         .padded()
         .then_ignore(just('=').padded())
         .then(term())
@@ -78,27 +70,27 @@ fn program_line<'src>() -> impl Parser<'src, &'src str, ProgramLine> {
 type Latency = u32;
 
 // Not padded.
-fn latency<'src>() -> impl Parser<'src, &'src str, Latency> {
+fn latency<'src>() -> impl Parser<'src, &'src str, Latency, Err<'src>> {
     just('#')
         .repeated()
         .count()
-        .try_map(|x: usize, _| u32::try_from(x).map_err(|_| Default::default()))
+        .try_map(|x: usize, span| u32::try_from(x).map_err(|e| Rich::custom(span, e.to_string())))
         .delimited_by(just('('), just(')'))
 }
 
 #[derive(Debug)]
-pub struct MachineDefLine {
-    pub name: String,
-    pub args: Vec<String>,
-    pub def: Term,
+pub struct MachineDefLine<'src> {
+    pub name: &'src str,
+    pub args: Vec<&'src str>,
+    pub def: Term<'src>,
     pub latency: Latency,
 }
 
-fn machine_def_line<'src>() -> impl Parser<'src, &'src str, MachineDefLine> {
+fn machine_def_line<'src>() -> impl Parser<'src, &'src str, MachineDefLine<'src>, Err<'src>> {
     group((
         latency().padded(),
-        identifier().map(String::from),
-        argument_list(identifier().map(String::from).padded()).map(Option::unwrap_or_default),
+        ident(),
+        argument_list(ident().padded()).map(Option::unwrap_or_default),
         just(":=").padded().ignored(),
         term(),
         inline_whitespace(),
@@ -113,12 +105,12 @@ fn machine_def_line<'src>() -> impl Parser<'src, &'src str, MachineDefLine> {
 }
 
 #[derive(Debug)]
-pub struct Ast {
-    program: Vec<ProgramLine>,
-    machine: Vec<MachineDefLine>,
+pub struct Ast<'src> {
+    program: Vec<ProgramLine<'src>>,
+    machine: Vec<MachineDefLine<'src>>,
 }
 
-pub fn program<'src>() -> impl Parser<'src, &'src str, Ast> {
+pub fn program<'src>() -> impl Parser<'src, &'src str, Ast<'src>, Err<'src>> {
     let program_header = just("[program]")
         .padded_by(inline_whitespace())
         .then_ignore(newlines());
