@@ -1,5 +1,10 @@
 [program]
 
+a = load_a()
+b = load_b()
+c = load_c()
+2 = load_2()
+4 = load_4()
 discriminant = sub(mul(b, b), mul(mul(4, a), c))
 num1 = add(neg(b), sqrt(discriminant))
 num2 = sub(neg(b), sqrt(discriminant))
@@ -9,11 +14,11 @@ program = pair(r1, r2)
 
 [machine]
 
-() A := a
-() B := b
-() C := c
-() _2 := 2
-() _4 := 4
+(#) LOAD_A := load_a()
+(#) LOAD_B := load_b()
+(#) LOAD_C := load_c()
+(#) LOAD_2 := load_2()
+(#) LOAD_4 := load_4()
 (#) ADD(a, b) := add(a, b)
 (#) SUB1(a, b) := sub(a, b)
 (#) SUB2(a, b) := add(neg(a), b)
