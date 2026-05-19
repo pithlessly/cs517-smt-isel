@@ -1,6 +1,6 @@
 use chumsky::error::Rich;
-use chumsky::prelude::{IterParser as _, Parser, end, group, just, recursive};
-use chumsky::text::{digits, ident, inline_whitespace, newline, whitespace};
+use chumsky::prelude::{IterParser as _, Parser, any, end, group, just, recursive};
+use chumsky::text::{Char as _, digits, ident, inline_whitespace, newline, whitespace};
 
 type Err<'src> = chumsky::extra::Err<Rich<'src, char>>;
 
@@ -32,6 +32,15 @@ impl<'src> std::fmt::Debug for Term<'src> {
     }
 }
 
+// Not padded.
+fn identifier<'src>() -> impl Parser<'src, &'src str, &'src str, Err<'src>> + Clone {
+    any()
+        .filter(|c: &char| c.is_ident_continue())
+        .repeated()
+        .at_least(1)
+        .to_slice()
+}
+
 // `p` parses an element is assumed padded. The resulting parser is padded on the left only.
 fn argument_list<'src, T>(
     p: impl Parser<'src, &'src str, T, Err<'src>> + Clone,
@@ -49,7 +58,7 @@ fn argument_list<'src, T>(
 // Not padded.
 fn term<'src>() -> impl Parser<'src, &'src str, Term<'src>, Err<'src>> {
     recursive(|term| {
-        ident()
+        identifier()
             .or(digits(10).to_slice())
             .then(argument_list(term.padded()))
             .map(|(label, children)| Term { label, children })
@@ -63,7 +72,7 @@ pub struct ProgramLine<'src> {
 }
 
 fn program_line<'src>() -> impl Parser<'src, &'src str, ProgramLine<'src>, Err<'src>> {
-    ident()
+    identifier()
         .padded()
         .then_ignore(just('=').padded())
         .then(term())
@@ -94,8 +103,8 @@ pub struct MachineDefLine<'src> {
 fn machine_def_line<'src>() -> impl Parser<'src, &'src str, MachineDefLine<'src>, Err<'src>> {
     group((
         latency().padded(),
-        ident(),
-        argument_list(ident().padded()).map(Option::unwrap_or_default),
+        identifier(),
+        argument_list(identifier().padded()).map(Option::unwrap_or_default),
         just(":=").padded().ignored(),
         term(),
         inline_whitespace(),
