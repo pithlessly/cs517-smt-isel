@@ -111,8 +111,8 @@ fn machine_def_line<'src>() -> impl Parser<'src, &'src str, MachineDefLine<'src>
 
 #[derive(Debug)]
 pub struct Ast<'src> {
-    program: Vec<ProgramLine<'src>>,
-    machine: Vec<MachineDefLine<'src>>,
+    pub program: Vec<ProgramLine<'src>>,
+    pub machine: Vec<MachineDefLine<'src>>,
 }
 
 pub fn program<'src>() -> impl Parser<'src, &'src str, Ast<'src>, Err<'src>> {
