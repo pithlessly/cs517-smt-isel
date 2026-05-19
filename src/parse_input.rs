@@ -11,14 +11,22 @@ fn newlines<'src>() -> impl Parser<'src, &'src str, (), Err<'src>> + Clone {
 #[derive(Clone)]
 pub struct Term<'src> {
     pub label: &'src str,
-    pub children: Vec<Term<'src>>, // terms with no children are treated like variables
+    pub children: Option<Vec<Term<'src>>>, // terms with no children are treated like variables
 }
 
 impl<'src> std::fmt::Debug for Term<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut t = f.debug_tuple(&self.label);
-        for child in &self.children {
-            t.field(child);
+        match self.children.as_deref() {
+            None => {}
+            Some([]) => {
+                t.field(&format_args!(""));
+            }
+            Some(children) => {
+                for child in children {
+                    t.field(child);
+                }
+            }
         }
         t.finish()
     }
@@ -44,10 +52,7 @@ fn term<'src>() -> impl Parser<'src, &'src str, Term<'src>, Err<'src>> {
         ident()
             .or(digits(10).to_slice())
             .then(argument_list(term.padded()))
-            .map(|(label, children)| Term {
-                label,
-                children: children.unwrap_or_default(),
-            })
+            .map(|(label, children)| Term { label, children })
     })
 }
 
@@ -67,7 +72,7 @@ fn program_line<'src>() -> impl Parser<'src, &'src str, ProgramLine<'src>, Err<'
         .map(|(label, def)| ProgramLine { label, def })
 }
 
-type Latency = u32;
+pub type Latency = u32;
 
 // Not padded.
 fn latency<'src>() -> impl Parser<'src, &'src str, Latency, Err<'src>> {
