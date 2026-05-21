@@ -1,6 +1,6 @@
 use chumsky::error::Rich;
 use chumsky::prelude::{IterParser as _, Parser, any, end, group, just, recursive};
-use chumsky::text::{Char as _, digits, ident, inline_whitespace, newline, whitespace};
+use chumsky::text::{Char as _, digits, inline_whitespace, newline, whitespace};
 
 type Err<'src> = chumsky::extra::Err<Rich<'src, char>>;
 
