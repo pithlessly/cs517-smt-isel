@@ -8,10 +8,24 @@ fn newlines<'src>() -> impl Parser<'src, &'src str, (), Err<'src>> + Clone {
     newline().repeated().at_least(1)
 }
 
+pub type Arity = u32;
+
 #[derive(Clone)]
 pub struct Term<'src> {
     pub label: &'src str,
     pub children: Option<Vec<Term<'src>>>, // terms with no children are treated like variables
+}
+
+impl<'src> Term<'src> {
+    fn new(label: &'src str, children: Option<Vec<Term<'src>>>) -> Self {
+        let arity = children.as_ref().map(Vec::len).unwrap_or(0);
+        assert!(Arity::try_from(arity).is_ok());
+        Self { label, children }
+    }
+
+    pub fn arity(&self) -> Arity {
+        self.children.as_ref().map(Vec::len).unwrap_or(0) as Arity
+    }
 }
 
 impl<'src> std::fmt::Debug for Term<'src> {
@@ -61,7 +75,7 @@ fn term<'src>() -> impl Parser<'src, &'src str, Term<'src>, Err<'src>> {
         identifier()
             .or(digits(10).to_slice())
             .then(argument_list(term.padded()))
-            .map(|(label, children)| Term { label, children })
+            .map(|(label, children)| Term::new(label, children))
     })
 }
 
