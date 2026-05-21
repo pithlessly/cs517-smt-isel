@@ -2,8 +2,8 @@ use anyhow::{Result, anyhow};
 
 use std::collections::HashMap;
 
-use crate::Latency;
 use crate::parse_input as ast;
+use crate::{Arity, Latency};
 
 pub type DagNodeId = u32;
 
@@ -28,8 +28,26 @@ impl std::fmt::Debug for Dag {
     }
 }
 
+type ArityMap = HashMap<String, Arity>;
+
+fn record_arity(arities: &mut ArityMap, label: &str, arity: Arity) -> Result<()> {
+    if let Some(&existing_arity) = arities.get(label) {
+        if arity != existing_arity {
+            Err(anyhow!(
+                "arity mismatch in program: {label}/{existing_arity} vs. {label}/{arity}"
+            ))
+        } else {
+            Ok(())
+        }
+    } else {
+        arities.insert(label.to_owned(), arity);
+        Ok(())
+    }
+}
+
 impl Dag {
     fn translate_term(
+        arities: &mut ArityMap,
         nodes: &mut Vec<DagNode>,
         labels: &HashMap<String, DagNodeId>,
         tm: &ast::Term,
@@ -41,9 +59,10 @@ impl Dag {
                 .copied()
                 .ok_or_else(|| anyhow!("unknown variable: {label}")),
             Some(children) => {
+                record_arity(arities, label, tm.arity())?;
                 let child_ids = children
                     .iter()
-                    .map(|child| Self::translate_term(nodes, labels, child))
+                    .map(|child| Self::translate_term(arities, nodes, labels, child))
                     .collect::<Result<_>>()?;
                 let id = u32::try_from(nodes.len()).unwrap();
                 nodes.push(DagNode {
@@ -55,7 +74,8 @@ impl Dag {
         }
     }
 
-    pub fn from_program(program: &[ast::ProgramLine]) -> Result<Self> {
+    fn from_ast_program(program: &[ast::ProgramLine]) -> Result<(Self, ArityMap)> {
+        let mut arities = ArityMap::new();
         let mut nodes = Vec::new();
         let mut labels = HashMap::new();
         let mut last_line = None;
@@ -63,14 +83,15 @@ impl Dag {
             if labels.contains_key(line.label) {
                 return Err(anyhow!("label is already defined: {}", line.label));
             }
-            let rhs = Self::translate_term(&mut nodes, &labels, &line.def)?;
+            let rhs = Self::translate_term(&mut arities, &mut nodes, &labels, &line.def)?;
             last_line = Some(rhs);
             labels.insert(line.label.to_owned(), rhs);
         }
-        Ok(Dag {
+        let dag = Dag {
             nodes,
             roots: last_line.into_iter().collect(),
-        })
+        };
+        Ok((dag, arities))
     }
 }
 
@@ -89,11 +110,20 @@ impl std::fmt::Debug for DagNode {
     }
 }
 
-type Arity = u32;
+#[derive(Debug)]
+pub struct Ir {
+    ir_operations: HashMap<String, Arity>,
+    program: Dag,
+}
 
-struct Program {
-    operations: HashMap<String, Arity>,
-    labels: HashMap<String, DagNode>,
+impl Ir {
+    pub fn from_ast(ast: &ast::Ast) -> Result<Self> {
+        let (program, ir_operations) = Dag::from_ast_program(&ast.program)?;
+        Ok(Self {
+            ir_operations,
+            program,
+        })
+    }
 }
 
 struct Machine<'a> {

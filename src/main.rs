@@ -1,10 +1,10 @@
 use anyhow::{Result, anyhow};
 use chumsky::Parser as _;
 
-mod build_dag;
+mod ir;
 mod parse_input;
 
-use parse_input::Latency;
+use parse_input::{Arity, Latency};
 
 fn main() -> Result<()> {
     let content = std::fs::read_to_string("input.txt")?;
@@ -13,7 +13,7 @@ fn main() -> Result<()> {
         .into_result()
         .map_err(|errs| anyhow!("{:?}", errs))?;
     eprintln!("{:?}", ast);
-    let dag = build_dag::Dag::from_program(&ast.program)?;
-    eprintln!("{:?}", dag);
+    let ir = ir::Ir::from_ast(&ast)?;
+    eprintln!("{:?}", ir);
     Ok(())
 }
