@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.102"
 chumsky = "0.13.0"
+z3 = "0.20.0"
