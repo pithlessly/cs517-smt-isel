@@ -88,7 +88,9 @@ fn latency<'src>() -> impl Parser<'src, &'src str, Latency, Err<'src>> {
     just('#')
         .repeated()
         .count()
-        .try_map(|x: usize, span| u32::try_from(x).map_err(|e| Rich::custom(span, e.to_string())))
+        .try_map(|x: usize, span| {
+            Latency::try_from(x).map_err(|e| Rich::custom(span, e.to_string()))
+        })
         .delimited_by(just('('), just(')'))
 }
 
