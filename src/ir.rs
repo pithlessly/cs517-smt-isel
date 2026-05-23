@@ -28,6 +28,12 @@ impl std::fmt::Debug for Dag {
     }
 }
 
+impl Dag {
+    pub fn len(&self) -> usize {
+        self.nodes.len()
+    }
+}
+
 type ArityMap = HashMap<String, Arity>;
 
 fn record_arity(arities: &mut ArityMap, label: &str, arity: Arity) -> Result<()> {
@@ -112,8 +118,8 @@ impl std::fmt::Debug for DagNode {
 
 #[derive(Debug)]
 pub struct Ir {
-    ir_operations: HashMap<String, Arity>,
-    program: Dag,
+    pub ir_operations: HashMap<String, Arity>,
+    pub program: Dag,
 }
 
 impl Ir {

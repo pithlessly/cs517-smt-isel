@@ -11,6 +11,7 @@
   in {
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = [
+        pkgs.z3
         pkgs.cargo
         pkgs.rustc
         pkgs.rust-analyzer

@@ -4,6 +4,9 @@ use chumsky::Parser as _;
 mod ir;
 mod parse_input;
 
+mod sorts;
+
+use ir::Ir;
 use parse_input::{Arity, Latency};
 
 fn main() -> Result<()> {
@@ -15,5 +18,6 @@ fn main() -> Result<()> {
     eprintln!("{:?}", ast);
     let ir = ir::Ir::from_ast(&ast)?;
     eprintln!("{:?}", ir);
+    sorts::z3_main(&ir);
     Ok(())
 }
