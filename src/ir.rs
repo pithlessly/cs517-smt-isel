@@ -116,36 +116,104 @@ impl std::fmt::Debug for DagNode {
     }
 }
 
-#[derive(Debug)]
-pub struct Ir {
-    pub ir_operations: HashMap<String, Arity>,
-    pub program: Dag,
-}
-
-impl Ir {
-    pub fn from_ast(ast: &ast::Ast) -> Result<Self> {
-        let (program, ir_operations) = Dag::from_ast_program(&ast.program)?;
-        Ok(Self {
-            ir_operations,
-            program,
-        })
-    }
-}
-
 pub type MachineInsnId = u32;
 
-struct Machine<'a> {
+#[derive(Debug)]
+pub struct Machine<'a> {
     definition_names: HashMap<&'a str, MachineInsnId>,
     definitions: Vec<MachineInsnDef>,
 }
 
+#[derive(Debug)]
 pub struct MachineInsnDef {
     arity: Arity,
     latency: Latency,
     def: MachineTerm,
 }
 
+#[derive(Debug)]
 pub enum MachineTerm {
     Param(usize),
-    Op(MachineInsnId, Vec<MachineTerm>),
+    Op(String, Vec<MachineTerm>),
+}
+
+impl MachineTerm {
+    fn from_ast_term<'src>(
+        term: &ast::Term<'src>,
+        params: &[&'src str],
+        arity_map: &HashMap<String, Arity>,
+    ) -> Result<MachineTerm> {
+        let label = term.label;
+        if let Some(children) = &term.children {
+            let actual_arity = children.len();
+            let &expected_arity = arity_map.get(label).ok_or_else(|| {
+                anyhow!("machine insn refers to undefined IR insn: {label}/{actual_arity}")
+            })?;
+            if expected_arity as usize != actual_arity {
+                return Err(anyhow!(
+                    "machine insn invokes {label}/{expected_arity} with {actual_arity} parameter{}",
+                    if actual_arity == 1 { "" } else { "s" }
+                ));
+            }
+            let terms = children
+                .iter()
+                .map(|c| Self::from_ast_term(c, params, arity_map))
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Self::Op(term.label.to_owned(), terms))
+        } else {
+            let idx = params
+                .iter()
+                .position(|&s| s == term.label)
+                .ok_or_else(|| anyhow!("machine insn refers to undefined variable: {label}"))?;
+            Ok(Self::Param(idx))
+        }
+    }
+}
+
+impl<'src> Machine<'src> {
+    fn from_ast_program(
+        machine: &[ast::MachineDefLine<'src>],
+        ir_ops: &HashMap<String, Arity>,
+    ) -> Result<Self> {
+        let mut definition_names = HashMap::new();
+        let mut definitions = Vec::new();
+
+        for (i, line) in machine.iter().enumerate() {
+            if definition_names.insert(line.name, i as u32).is_some() {
+                return Err(anyhow!("duplicate machine insn definition: {}", line.name));
+            }
+
+            let insn = MachineInsnDef {
+                arity: line.args.len() as Arity,
+                latency: line.latency,
+                def: MachineTerm::from_ast_term(&line.def, &line.args, ir_ops)?,
+            };
+
+            definitions.push(insn);
+        }
+
+        Ok(Self {
+            definition_names,
+            definitions,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct Ir<'a> {
+    pub ir_operations: HashMap<String, Arity>,
+    pub program: Dag,
+    pub machine: Machine<'a>,
+}
+
+impl<'src> Ir<'src> {
+    pub fn from_ast(ast: &ast::Ast<'src>) -> Result<Self> {
+        let (program, ir_operations) = Dag::from_ast_program(&ast.program)?;
+        let machine = Machine::from_ast_program(&ast.machine, &ir_operations)?;
+        Ok(Self {
+            ir_operations,
+            program,
+            machine,
+        })
+    }
 }
