@@ -132,6 +132,20 @@ impl Ir {
     }
 }
 
+pub type MachineInsnId = u32;
+
 struct Machine<'a> {
-    definitions: HashMap<String, (Vec<String>, Latency, ast::Term<'a>)>,
+    definition_names: HashMap<&'a str, MachineInsnId>,
+    definitions: Vec<MachineInsnDef>,
+}
+
+pub struct MachineInsnDef {
+    arity: Arity,
+    latency: Latency,
+    def: MachineTerm,
+}
+
+pub enum MachineTerm {
+    Param(usize),
+    Op(MachineInsnId, Vec<MachineTerm>),
 }
