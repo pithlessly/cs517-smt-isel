@@ -9,9 +9,9 @@ It's worth noting that we usually think of the compilation process as proceeding
 
 == The reduction to SMT
 
-The output variables $M_1, ..., M_k$ are to be solved for. We also introduce another a sequence of integer variables $m_1, ..., m_k in {1, ..., s}$ with the following semantics: $m_i = j$ asserts that the machine instruction $M_i$ is responsible for computing the value of the IR instruction $P_j$.
+The output variables $M_1, ..., M_k$ are to be solved for. We also introduce another sequence of integer variables $m_1, ..., m_k in {1, ..., s}$ with the following semantics: $m_i = j$ asserts that the machine instruction $M_i$ is responsible for computing the value of the IR instruction $P_j$.
 
-We define the latency of a machine instruction $M = c(overline(r_1))$ as
+We define the latency of a machine instruction $M = c(overline(r))$ as
 
 $ "latency"(M) := max{ 0, "latency"(M_r_1), ..., "latency"(M_r_n) } + (c."latency"), $
 
