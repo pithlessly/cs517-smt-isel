@@ -121,28 +121,28 @@ pub type MachineInsnId = u32;
 #[derive(Debug)]
 pub struct Machine<'a> {
     definition_names: HashMap<&'a str, MachineInsnId>,
-    definitions: Vec<MachineInsnDef>,
+    definitions: Vec<MachineInsnDef<'a>>,
 }
 
 #[derive(Debug)]
-pub struct MachineInsnDef {
+pub struct MachineInsnDef<'a> {
     arity: Arity,
     latency: Latency,
-    def: MachineTerm,
+    def: MachineTerm<'a>,
 }
 
 #[derive(Debug)]
-pub enum MachineTerm {
+pub enum MachineTerm<'a> {
     Param(usize),
-    Op(String, Vec<MachineTerm>),
+    Op(&'a str, Vec<MachineTerm<'a>>),
 }
 
-impl MachineTerm {
-    fn from_ast_term<'src>(
+impl<'src> MachineTerm<'src> {
+    fn from_ast_term(
         term: &ast::Term<'src>,
         params: &[&'src str],
         arity_map: &HashMap<String, Arity>,
-    ) -> Result<MachineTerm> {
+    ) -> Result<MachineTerm<'src>> {
         let label = term.label;
         if let Some(children) = &term.children {
             let actual_arity = children.len();
@@ -159,7 +159,7 @@ impl MachineTerm {
                 .iter()
                 .map(|c| Self::from_ast_term(c, params, arity_map))
                 .collect::<Result<Vec<_>>>()?;
-            Ok(Self::Op(term.label.to_owned(), terms))
+            Ok(Self::Op(term.label, terms))
         } else {
             let idx = params
                 .iter()
