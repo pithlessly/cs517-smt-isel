@@ -120,15 +120,16 @@ pub type MachineInsnId = u32;
 
 #[derive(Debug)]
 pub struct Machine<'a> {
-    definition_names: HashMap<&'a str, MachineInsnId>,
-    definitions: Vec<MachineInsnDef<'a>>,
+    pub definition_names: HashMap<&'a str, MachineInsnId>,
+    pub definitions: Vec<MachineInsnDef<'a>>,
 }
 
 #[derive(Debug)]
 pub struct MachineInsnDef<'a> {
-    arity: Arity,
-    latency: Latency,
-    def: MachineTerm<'a>,
+    pub name: &'a str,
+    pub arity: Arity,
+    pub latency: Latency,
+    pub def: MachineTerm<'a>,
 }
 
 #[derive(Debug)]
@@ -184,6 +185,7 @@ impl<'src> Machine<'src> {
             }
 
             let insn = MachineInsnDef {
+                name: line.name,
                 arity: line.args.len() as Arity,
                 latency: line.latency,
                 def: MachineTerm::from_ast_term(&line.def, &line.args, ir_ops)?,
