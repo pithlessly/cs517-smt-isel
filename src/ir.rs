@@ -8,8 +8,8 @@ use crate::{Arity, Latency};
 pub type DagNodeId = u32;
 
 pub struct Dag {
-    nodes: Vec<DagNode>,
-    roots: Vec<DagNodeId>,
+    pub nodes: Vec<DagNode>,
+    pub roots: Vec<DagNodeId>,
 }
 
 impl std::fmt::Debug for Dag {
@@ -101,9 +101,9 @@ impl Dag {
     }
 }
 
-struct DagNode {
-    label: String,
-    children: Vec<DagNodeId>,
+pub struct DagNode {
+    pub label: String,
+    pub children: Vec<DagNodeId>,
 }
 
 impl std::fmt::Debug for DagNode {

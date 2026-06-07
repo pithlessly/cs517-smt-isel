@@ -1,6 +1,29 @@
 use crate::Ir;
 
-fn ir_node(ir: &Ir) -> z3::DatatypeSort {
+#[derive(Debug)]
+pub struct SolverSorts {
+    pub ir_node_id: z3::Sort,
+    pub machine_node_id: z3::Sort,
+    pub machine_node_id_bitcount: u32,
+    pub machine_node: z3::Sort,
+}
+
+impl SolverSorts {
+    pub fn new(ir: &Ir, machine_program_len: u32) -> Self {
+        let ir_node_id = ir_node_id(ir).sort;
+        let (machine_node_id, machine_node_id_bitcount) = machine_node_id(machine_program_len);
+        let machine_node = machine_node(&machine_node_id, ir).sort;
+
+        Self {
+            ir_node_id,
+            machine_node_id,
+            machine_node_id_bitcount,
+            machine_node,
+        }
+    }
+}
+
+fn ir_node_id(ir: &Ir) -> z3::DatatypeSort {
     let mut builder = z3::DatatypeBuilder::new("IrNode");
     for i in 0..ir.program.len() {
         builder = builder.variant(&format!("ir{}", i), vec![]);
@@ -10,13 +33,13 @@ fn ir_node(ir: &Ir) -> z3::DatatypeSort {
 
 // Since we compare machine indices using `<`, these need to be a bounded integer
 // (bitvector in Z3 parlance) rather than an ADT.
-fn machine_node_id(machine_program_len: u32) -> z3::Sort {
+fn machine_node_id(machine_program_len: u32) -> (z3::Sort, u32) {
     let num_bits = if machine_program_len > 1 {
         (machine_program_len - 1).ilog2() + 1
     } else {
         1 // I think zero-length bitvectors are not allowed
     };
-    z3::Sort::bitvector(num_bits)
+    (z3::Sort::bitvector(num_bits), num_bits)
 }
 
 fn machine_node(t_machine_node_id: &z3::Sort, ir: &Ir) -> z3::DatatypeSort {
@@ -31,14 +54,4 @@ fn machine_node(t_machine_node_id: &z3::Sort, ir: &Ir) -> z3::DatatypeSort {
         builder = builder.variant(definition.name, fields)
     }
     builder.finish()
-}
-
-pub fn z3_main(ir: &Ir) {
-    let t_ir_node = ir_node(ir);
-    let t_machine_node_id = machine_node_id(10);
-    let t_machine_node = machine_node(&t_machine_node_id, ir);
-    eprintln!("\n====== z3 ======");
-    eprintln!("{:#?}", t_ir_node);
-    eprintln!("{:#?}", t_machine_node_id);
-    eprintln!("{:#?}", t_machine_node);
 }

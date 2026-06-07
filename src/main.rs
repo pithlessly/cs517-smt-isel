@@ -4,6 +4,7 @@ use chumsky::Parser as _;
 mod ir;
 mod parse_input;
 
+mod reduction;
 mod sorts;
 
 use ir::Ir;
@@ -18,6 +19,16 @@ fn main() -> Result<()> {
     eprintln!("{:?}", ast);
     let ir = ir::Ir::from_ast(&ast)?;
     eprintln!("{:?}", ir);
-    sorts::z3_main(&ir);
+
+    eprintln!("{:?}", ir.program.nodes.len());
+
+    let machine_program_len = 10;
+
+    let sorts = sorts::SolverSorts::new(&ir, machine_program_len);
+    eprintln!("{:#?}", sorts);
+
+    let variables = reduction::Variables::new(&ir, machine_program_len, &sorts);
+    eprintln!("{:#?}", variables);
+
     Ok(())
 }
