@@ -2,17 +2,17 @@ use crate::Ir;
 
 #[derive(Debug)]
 pub struct SolverSorts {
-    pub ir_node_id: z3::Sort,
+    pub ir_node_id: z3::DatatypeSort,
     pub machine_node_id: z3::Sort,
     pub machine_node_id_bitcount: u32,
-    pub machine_node: z3::Sort,
+    pub machine_node: z3::DatatypeSort,
 }
 
 impl SolverSorts {
     pub fn new(ir: &Ir, machine_program_len: u32) -> Self {
-        let ir_node_id = ir_node_id(ir).sort;
+        let ir_node_id = ir_node_id(ir);
         let (machine_node_id, machine_node_id_bitcount) = machine_node_id(machine_program_len);
-        let machine_node = machine_node(&machine_node_id, ir).sort;
+        let machine_node = machine_node(&machine_node_id, ir);
 
         Self {
             ir_node_id,
