@@ -12,15 +12,13 @@ use parse_input::{Arity, Latency};
 
 fn main() -> Result<()> {
     let content = std::fs::read_to_string("input.txt")?;
+
     let ast = parse_input::program()
         .parse(&content)
         .into_result()
         .map_err(|errs| anyhow!("{:?}", errs))?;
-    eprintln!("{:?}", ast);
-    let ir = ir::Ir::from_ast(&ast)?;
-    eprintln!("{:?}", ir);
 
-    eprintln!("{:?}", ir.program.nodes.len());
+    let ir = ir::Ir::from_ast(&ast)?;
 
     let machine_program_len = 10;
 
@@ -29,6 +27,13 @@ fn main() -> Result<()> {
 
     let variables = reduction::Variables::new(&ir, machine_program_len, &sorts);
     eprintln!("{:#?}", variables);
+
+    let match_expr = reduction::pattern_match_machine_node(
+        &sorts,
+        &variables.output_program[0].instr,
+        |i, _args| z3::ast::Int::from_u64(i as u64),
+    );
+    eprintln!("{:#?}", match_expr);
 
     Ok(())
 }
