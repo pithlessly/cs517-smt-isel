@@ -25,15 +25,7 @@ fn main() -> Result<()> {
     let sorts = sorts::SolverSorts::new(&ir, machine_program_len);
     eprintln!("{:#?}", sorts);
 
-    let variables = reduction::Variables::new(&ir, machine_program_len, &sorts);
-    eprintln!("{:#?}", variables);
-
-    let match_expr = reduction::pattern_match_machine_node(
-        &sorts,
-        &variables.output_program[0].instr,
-        |i, _args| z3::ast::Int::from_u64(i as u64),
-    );
-    eprintln!("{:#?}", match_expr);
+    reduction::solve(&ir, machine_program_len, &sorts);
 
     Ok(())
 }

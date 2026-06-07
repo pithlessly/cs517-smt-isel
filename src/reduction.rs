@@ -1,13 +1,13 @@
 // correctness means:
-// - arity (implied by types)
-// - causality
-// - latency
-// - modeling
-// - roots
+// [✓] arity (implied by types)
+// [✓] causality
+// [ ] latency
+// [ ] modeling
+// [ ] roots
 
 use z3::ast::Ast;
 
-use crate::{ir::Ir, parse_input::Latency, sorts::SolverSorts};
+use crate::{ir::Ir, sorts::SolverSorts};
 
 mod dt {
     use z3::ast::{BV, Datatype};
@@ -22,6 +22,12 @@ pub struct OutputSlot {
     pub model: dt::IrNodeId,    // m[i]
 }
 
+#[derive(Debug)]
+pub struct Variables {
+    pub output_program: Box<[OutputSlot]>,
+    pub root_witnesses: Box<[dt::MachineNodeId]>, // ρ[i]
+}
+
 impl OutputSlot {
     pub fn new(sorts: &SolverSorts, idx: u32) -> Self {
         Self {
@@ -29,12 +35,6 @@ impl OutputSlot {
             model: dt::IrNodeId::new_const(format!("m_{idx}"), &sorts.ir_node_id.sort),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct Variables {
-    pub output_program: Box<[OutputSlot]>,
-    pub root_witnesses: Box<[dt::MachineNodeId]>, // ρ[i]
 }
 
 impl Variables {
@@ -99,4 +99,35 @@ pub fn pattern_match_machine_node<R: Ast>(
             })
         })
         .expect("need at least one case")
+}
+
+fn check_causality(sorts: &SolverSorts, variables: &Variables) -> z3::ast::Bool {
+    let conjuncts: Box<[z3::ast::Bool]> = variables
+        .output_program
+        .iter()
+        .enumerate()
+        .map(|(i, slot)| {
+            let i = dt::MachineNodeId::from_u64(i as _, sorts.machine_node_id_bitcount);
+            pattern_match_machine_node(sorts, &slot.instr, |_, args| {
+                let conjuncts: Box<[_]> = args.iter().map(|arg| arg.bvult(&i)).collect();
+                z3::ast::Bool::and(&conjuncts)
+            })
+        })
+        .collect();
+
+    z3::ast::Bool::and(&conjuncts)
+}
+
+pub fn solve(ir: &Ir, machine_program_len: u32, sorts: &SolverSorts) {
+    let variables = Variables::new(&ir, machine_program_len, &sorts);
+    eprintln!("{:#?}", variables);
+
+    let match_expr =
+        pattern_match_machine_node(&sorts, &variables.output_program[0].instr, |i, _args| {
+            z3::ast::Int::from_u64(i as u64)
+        });
+    eprintln!("{:#?}", match_expr);
+
+    let is_causal = check_causality(sorts, &variables);
+    eprintln!("{:#?}", is_causal);
 }
