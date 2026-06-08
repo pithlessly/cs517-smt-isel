@@ -66,7 +66,7 @@ pub fn pattern_match_machine_node<R: Ast>(
     scrutinee: &dt::MachineNode,
     mut branch: impl FnMut(usize, &[dt::MachineNodeId]) -> R,
 ) -> R {
-    // we implement this as a chain of if-statements;
+    // we implement this as a chain of if-statements
     sorts
         .machine_node
         .variants
