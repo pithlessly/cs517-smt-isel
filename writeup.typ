@@ -109,7 +109,7 @@ $
 
 As a convention, we use variables $i$ and $tt$ as indexes of IR instructions and $j$ and $rr$ for machine instructions.
 
-A machine instruction is thought of as standing in for one or more IR instructions. For example, we could imagine a machine opcode $machine("FMA")$ of arity 2, where $machine("FMA")(a, b, c)$ represents the computation $ir("add")(a, ir("mul")(b, c))$. We formalize this with the idea of a *machine definition* $D$, which associates each $n$-ary machine opcode $β$ with a definition in terms of a tree of IR instructions with $n$ free variables, written $pτ$.
+A machine instruction is thought of as standing in for one or more IR instructions. For example, a 3-ary machine opcode $machine("FMA")(a, b, c)$ might represent the computation $ir("add")(a, ir("mul")(b, c))$. We formalize this with the idea of a *machine definition* $D$, which associates each $n$-ary machine opcode $β$ with a definition in terms of a tree of IR instructions with $n$ free variables, written $pτ$.
 
 $
   pτ ::= & x_k & "(free variable)" \
