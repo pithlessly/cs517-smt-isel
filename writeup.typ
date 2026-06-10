@@ -201,7 +201,19 @@ Prior to constructing the formula, we build an index with the following structur
 - $mM_j = machine("ADD")(rr_1, rr_2)$, with $mM_rr_1$ modeling $pP_3$ and $mM_rr_2$ modeling $pP_7$; in other words, $(m_rr_1, m_rr_2) = (3, 7)$.
 - $mM_j = machine("FMA")(rr_1, rr_2, rr_3)$, with $mM_rr_1$ modeling $pP_3$, $mM_rr_2$ modeling $pP_1$, and $mM_rr_3$ modeling $pP_4$; in other words, $(m_rr_1, m_rr_2, m_rr_3) = (3, 1, 4)$.
 
-This gives us a way to succinctly encode the assertion that a particular $mM_j$ models $pP_i$ in the formula. We add conjuncts to $φ$ that pattern match on each $mM_k$, and depending on what opcode they find, express the appropriate constraint on the possible values of $m_k$.
+This gives us a way to succinctly encode the assertion that a particular $mM_j$ models $pP_i$ in the formula. For each $1 ≤ j ≤ K$, we add a conjunct to $φ$ that performs a case analysis on $mM_j$, and depending on what opcode it finds, expresses the appropriate constraint on the possible values of $m_j$. To ensure that every root is modeled we go through each $i ∈ pR$, and add an assertion to $φ$ the that there is some $1 ≤ j ≤ K$ such that $m_j = i$. (The existential quantifier can be expanded to a disjunction of $K$ clauses.)
+
+The final set of variables $ell_1, ..., ell_K$ are used to express the latency constraint. The assertion that $latency(mM) ≤ L$ can be encoded almost verbatim from the definition of latency given above.
+
+= Scaffolding of the reduction
+
+The final SMT formula can be denoted by
+
+$ φ(pC, pP, pR, mC, D, latency(-), L, K; mM_1, ..., mM_K, m_1, ..., m_K, ell_1, ..., ell_K), $
+
+where the semicolon separates inputs from variables of the formula. To produce a minimal-latency output, we start with $L = 1$ and proceed upwards, checking whether $φ(..., L, K; mM_1, ..., mM_K, m_1, ..., m_K, ell_1, ..., ell_K)$ is satisfiable for some $1 ≤ K ≤ N$. The optimal output program can be read directly from the valuation of $mM_1, ..., mM_K$ in the satisfying assignment.
+
+#pagebreak()
 
 #bibliography(
   "works.bib",
