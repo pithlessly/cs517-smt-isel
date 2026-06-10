@@ -17,7 +17,7 @@
 ]
 #set heading(numbering: "1.1)")
 #set text(size: 10pt)
-#set par(justify: true)
+#set par(justify: true, first-line-indent: 1em)
 
 #let ir(it) = text(fill: rgb("#0069c5"), it)
 #let machine(it) = text(fill: red, it)
@@ -69,7 +69,7 @@ We will adopt the convention of coloring words and variables related to the IR (
 
 We assume there is a fixed finite set of *IR opcodes* $pC$ and each opcode $α ∈ pC$ has an associated *arity*.
 
-As input, we start with an *IR program*, which is a sequence $pP$ of *IR instructions*. Each IR instruction consists of an opcode and a tuple of arguments matching the opcode's arity.
+As input, we start with an *IR program*, which is a sequence $pP$ of *IR instructions*. Each IR instruction consists of an opcode and a tuple of arguments matching the opcode's arity. We use $N$ for the length of the program.
 
 $
   pP := &{ pP_1, ..., pP_N } \
@@ -107,7 +107,7 @@ $
   mM_j ::= &β (rr_1, ..., rr_m), #h(1cm) β ∈ mC, #h(0.5cm) m = arity(β), #h(0.5cm) 1 ≤ rr_1, ..., rr_m < j. \
 $
 
-As a convention, we use variables $i$ and $tt$ as indexes of IR instructions and $j$ and $rr$ for machine instructions.
+As a convention, we use variables $i$ and $tt$ as indices of IR instructions and $j$ and $rr$ for machine instructions.
 
 A machine instruction is thought of as standing in for one or more IR instructions. For example, a 3-ary machine opcode $machine("FMA")(a, b, c)$ might represent the computation $ir("add")(a, ir("mul")(b, c))$. We formalize this with the idea of a *machine definition* $D$, which associates each $n$-ary machine opcode $β$ with a definition in terms of a tree of IR instructions with $n$ free variables, written $pτ$.
 
@@ -133,7 +133,7 @@ $
   \ & #[*where*] mM_j = β (rr_1, ..., rr_m)
 $
 
-For a fixed $pC, mC, D$, we say that an instruction $mM_j$ in a machine program *models* an IR instruction $pP_i$ if $tree(pP_i) = tree(D, mM_j)$. In other words, $mM_j$ computes the same expression tree as $pP_i$.
+For a fixed $pC, mC, D$, we say that an instruction $mM_j$ in a machine program *models* an IR instruction $pP_i$ if $tree(pP_i) = tree(D, mM_j)$. In other words, $mM_j$ computes the same expression tree as $pP_i$. (In the instruction selection literature, this relationship is referred to as "tree covering.")
 
 Then we can say that a machine program $mM$ *models* an IR program $(pP, pR)$ if for each designated result $i ∈ pR$ there exists some instruction $mM_j$ that models $pP_i$. In other words, every IR instruction designated as a result is computed by some machine instruction. Note that the modeling requirement does not forbid the machine program from containing unnecessary instructions.
 
@@ -185,6 +185,23 @@ There is a corresponding decision problem: given the above and a latency bound $
 In our implementation, only $pP$, $D$, and $latency(-)$ need to be provided by the user. The sets $pC$ and $mC$ and associated arities are automatically deduced, and $pR$ is hardcoded to be ${ N }$, i.e. only the last IR instruction is designated as a result. This is not a significant restriction, because if a larger set $pR = { i_1, ..., i_n }$ is desired, the user can introduce a new $n$-ary IR opcode $ir("tuple")$ and add the "dummy" instruction $ir("tuple")(i_1, ..., i_n)$ at the end of the program, along with a corresponding machine opcode $machine("TUPLE")$ with $D_machine("TUPLE")(x_1, ..., x_n) = ir("tuple")(x_1, ..., x_n)$. Since there is no way to compute $ir("tuple")(...)$ except using $machine("TUPLE")(...)$, this forces $pP_i_1, ..., pP_i_n$ to be materialized.
 
 = Design of the reduction to SMT
+
+We use the SMT solver Z3 @z3 to approach the decision problem. For a fixed $K ∈ NN$ (the length of the output program) and $L ∈ NN$ (the latency bound), we generate a formula $φ$ which is satisfiable iff there is a machine program $mM$ of length $K$ such that $mM$ models $(pP, pR)$ and $latency(mM) ≤ L$.
+
+Z3 has built-in support for algebraic data types (`DatatypeSort`), so we can dynamically build a data type representing a well-formed machine instruction. This lets us encode the variables $mM_1, ..., mM_K$ directly as variables of $φ$.
+
+For an instruction $mM_j = β(rr_1, ..., rr_m)$, this automatically upholds the constraint $m = arity(β)$, but it does not guarantee that $1 ≤ rr_1, ..., rr_m < j$. Instead, this constraint is enforced by a collection of assertions in $φ$. The indices $rr_1, ..., rr_m$ as bitvectors (`BV`) of the smallest bit width necessary.
+
+To state that $mM$ models $(pP, pR)$, we introduce another collection of integer-valued variables $m_1, ..., m_K$. The value of such a variable $m_j = i$ encodes the fact that the machine instruction $mM_j$ models the IR instruction $pP_i$. It is never useful for a machine program to contain an instruction $mM_j$ that does not model any IR instruction; conversely, if it would model two distinct $pP_i$ and $pP_i'$, then these instructions have the same expression tree, and therefore could have been combined using common subexpression elimination at an earlier point in the compiler pipeline. This justifies the assumption that "$mM_j$ models $pP_i$" is a one-to-one relationship.
+
+Rather than using bitvectors for the variables ${m_k}$, we create another algebraic data type that has exactly $N$ variants with no arguments. This is better for Z3 to handle, because it expresses that the bits of the index are unimportant (unlike machine instruction indices, where we need to perform numeric comparison on bitvectors).
+
+Prior to constructing the formula, we build an index with the following structure. For each $1 ≤ i ≤ N$, we record which machine opcodes $β$ are candidates for a machine instruction that models $pP_i$, and for each candidate, we record what the arguments to this machine instruction would need to be. This is done by using unification to match $pP_i$ against the definition $D_β$. As an example, if we had $pP_9 = ir("add")(3, 7)$ and $pP_7 = ir("mul")(1, 4)$, then the set of candidate machine opcodes for $pP_9$ might look like ${ machine("ADD") |-> (3, 7), machine("FMA")(3,1,4) }$. This expresses the idea that if $m_j = 9$ at some index $j$, then either:
+
+- $mM_j = machine("ADD")(rr_1, rr_2)$, with $mM_rr_1$ modeling $pP_3$ and $mM_rr_2$ modeling $pP_7$; in other words, $(m_rr_1, m_rr_2) = (3, 7)$.
+- $mM_j = machine("FMA")(rr_1, rr_2, rr_3)$, with $mM_rr_1$ modeling $pP_3$, $mM_rr_2$ modeling $pP_1$, and $mM_rr_3$ modeling $pP_4$; in other words, $(m_rr_1, m_rr_2, m_rr_3) = (3, 1, 4)$.
+
+This gives us a way to succinctly encode the assertion that a particular $mM_j$ models $pP_i$ in the formula. We add conjuncts to $φ$ that pattern match on each $mM_k$, and depending on what opcode they find, express the appropriate constraint on the possible values of $m_k$.
 
 #bibliography(
   "works.bib",
