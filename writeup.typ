@@ -135,9 +135,9 @@ $
 
 For a fixed $pC, mC, D$, we say that an instruction $mM_j$ in a machine program *models* an IR instruction $pP_i$ if $tree(pP_i) = tree(D, mM_j)$. In other words, $mM_j$ computes the same expression tree as $pP_i$.
 
-Then we can say that a machine program $mM$ *models* an IR program $(pP, pR)$ if for each designated result $i ∈ pR$ there exists some instruction $mM_j$ that models $pP_i$. In other words, every IR instruction designated as a result is computed by some machine instruction. Also note that the modeling requirement does not forbid the machine program from containing unnecessary instructions.
+Then we can say that a machine program $mM$ *models* an IR program $(pP, pR)$ if for each designated result $i ∈ pR$ there exists some instruction $mM_j$ that models $pP_i$. In other words, every IR instruction designated as a result is computed by some machine instruction. Note that the modeling requirement does not forbid the machine program from containing unnecessary instructions.
 
-Notice that if an index $i$ is not present in $pR$ then there is no requirement that the machine program materialize the value of $pP_i$. This is what allows the compiler to use instructions like $machine("FMA")(a, b, c)$ when we don't need the intermediate computation $ir("mul")(b, c)$ to ultimately be saved in a register.
+Also notice that if an index $i$ is not present in $pR$ then there is no requirement that the machine program materialize the value of $pP_i$. This is what permits the compiler to use instructions like $machine("FMA")(a, b, c)$ when the user indicates that they don't need the intermediate computation $ir("mul")(b, c)$ to ultimately be saved in a register.
 
 == Latency calculation
 
@@ -155,7 +155,7 @@ Each machine opcode $β ∈ mC$ has an associated *latency*, which we take to be
 A machine program is considered finished once all instructions have been retired; this determines its *total latency.* In notation:
 
 $
-  decode(j) &:= cases(0 &"if" j = 1, dispatch(i-1) + 1 &"if" j > 1) \
+  decode(j) &:= cases(0 &"if" j = 1, 1 + dispatch(i-1) &"if" j > 1) \
   dispatch(j) &:= max{ decode(j), retire(rr_1), ..., retire(rr_m) } \
               &#[*where*] mM_j = β (rr_1, ..., rr_m) \
   retire(j) &:= dispatch(j) + latency(β) \
