@@ -7,9 +7,10 @@
 
 use z3::ast::Ast;
 
-use crate::{ir::Ir, sorts::SolverSorts};
+use crate::ir::Ir;
+use crate::sorts::SolverSorts;
 
-mod dt {
+pub mod dt {
     use z3::ast::{BV, Datatype};
     pub type IrNodeId = Datatype; // of sort `sorts.ir_node_id`
     pub type MachineNodeId = BV; // of sort `sorts.machine_node_id`
@@ -101,33 +102,29 @@ pub fn pattern_match_machine_node<R: Ast>(
         .expect("need at least one case")
 }
 
-fn check_causality(sorts: &SolverSorts, variables: &Variables) -> z3::ast::Bool {
-    let conjuncts: Box<[z3::ast::Bool]> = variables
-        .output_program
-        .iter()
-        .enumerate()
-        .map(|(i, slot)| {
-            let i = dt::MachineNodeId::from_u64(i as _, sorts.machine_node_id_bitcount);
-            pattern_match_machine_node(sorts, &slot.instr, |_, args| {
-                let conjuncts: Box<[_]> = args.iter().map(|arg| arg.bvult(&i)).collect();
-                z3::ast::Bool::and(&conjuncts)
-            })
-        })
-        .collect();
-
-    z3::ast::Bool::and(&conjuncts)
+fn assert_causality(sorts: &SolverSorts, variables: &Variables, solver: &z3::Solver) {
+    for (i, slot) in variables.output_program.iter().enumerate() {
+        let i = dt::MachineNodeId::from_u64(i as _, sorts.machine_node_id_bitcount);
+        solver.assert(pattern_match_machine_node(sorts, &slot.instr, |_, args| {
+            let conjuncts: Box<[_]> = args.iter().map(|arg| arg.bvult(&i)).collect();
+            z3::ast::Bool::and(&conjuncts)
+        }));
+    }
 }
 
 pub fn solve(ir: &Ir, machine_program_len: u32, sorts: &SolverSorts) {
     let variables = Variables::new(&ir, machine_program_len, &sorts);
     eprintln!("{:#?}", variables);
 
-    let match_expr =
-        pattern_match_machine_node(&sorts, &variables.output_program[0].instr, |i, _args| {
-            z3::ast::Int::from_u64(i as u64)
-        });
-    eprintln!("{:#?}", match_expr);
+    let solver = z3::Solver::new();
 
-    let is_causal = check_causality(sorts, &variables);
-    eprintln!("{:#?}", is_causal);
+    assert_causality(sorts, &variables, &solver);
+    eprintln!("solver.check() returned: {:?}", solver.check());
+
+    let model = solver
+        .get_model()
+        .expect("unable to find a satisfying model!");
+
+    let output_program = variables.extract(ir, sorts, &model);
+    eprintln!("{:#?}", output_program);
 }

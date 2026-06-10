@@ -4,6 +4,7 @@ use chumsky::Parser as _;
 mod ir;
 mod parse_input;
 
+mod extraction;
 mod reduction;
 mod sorts;
 
@@ -22,10 +23,14 @@ fn main() -> Result<()> {
 
     let machine_program_len = 10;
 
-    let sorts = sorts::SolverSorts::new(&ir, machine_program_len);
-    eprintln!("{:#?}", sorts);
+    let mut config = z3::Config::new();
+    config.set_model_generation(true);
+    z3::with_z3_config(&config, || {
+        let sorts = sorts::SolverSorts::new(&ir, machine_program_len);
+        eprintln!("{:#?}", sorts);
 
-    reduction::solve(&ir, machine_program_len, &sorts);
+        reduction::solve(&ir, machine_program_len, &sorts);
+    });
 
     Ok(())
 }
