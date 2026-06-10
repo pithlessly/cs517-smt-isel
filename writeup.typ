@@ -155,7 +155,7 @@ Each machine opcode $β ∈ mC$ has an associated *latency*, which we take to be
 A machine program is considered finished once all instructions have been retired; this determines its *total latency.* In notation:
 
 $
-  decode(j) &:= cases(0 &"if" j = 1, dispatch(i-1) &"if" j > 1) \
+  decode(j) &:= cases(0 &"if" j = 1, dispatch(i-1) + 1 &"if" j > 1) \
   dispatch(j) &:= max{ decode(j), retire(rr_1), ..., retire(rr_m) } \
               &#[*where*] mM_j = β (rr_1, ..., rr_m) \
   retire(j) &:= dispatch(j) + latency(β) \
