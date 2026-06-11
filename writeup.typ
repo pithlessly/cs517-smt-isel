@@ -230,6 +230,8 @@ trying w/ length 4
 total latency: 4
 ```
 
+We speculate that scaling behavior can be made polynomial in $N$ for a fixed machine description, but is exponential in the size of the machine description and the complexity of opcode definitions.
+
 = AI acknowledgement
 
 We did not use AI in the creation of the project.
