@@ -196,7 +196,7 @@ To state that $mM$ models $(pP, pR)$, we introduce another collection of integer
 
 Rather than using bitvectors for the variables ${m_k}$, we create another algebraic data type that has exactly $N$ variants with no arguments. This is better for Z3 to handle, because it expresses that the bits of the index are unimportant (unlike machine instruction indices, where we need to perform numeric comparison on bitvectors).
 
-Prior to constructing the formula, we build an index with the following structure. For each $1 ≤ i ≤ N$, we record which machine opcodes $β$ are candidates for a machine instruction that models $pP_i$, and for each candidate, we record what the arguments to this machine instruction would need to be. This is done by using unification to match $pP_i$ against the definition $D_β$. As an example, if we had $pP_9 = ir("add")(3, 7)$ and $pP_7 = ir("mul")(1, 4)$, then the set of candidate machine opcodes for $pP_9$ might look like ${ machine("ADD") |-> (3, 7), machine("FMA")(3,1,4) }$. This expresses the idea that if $m_j = 9$ at some index $j$, then either:
+Prior to constructing the formula, we build an index with the following structure. For each $1 ≤ i ≤ N$, we record which machine opcodes $β$ are candidates for a machine instruction that models $pP_i$, and for each candidate, we record what the arguments to this machine instruction would need to be. This is done by using unification to match $pP_i$ against the definition $D_β$. As an example, if we had $pP_9 = ir("add")(3, 7)$ and $pP_7 = ir("mul")(1, 4)$, then the set of candidate machine opcodes for $pP_9$ might look like ${ machine("ADD") |-> (3, 7), machine("FMA") |-> (3,1,4) }$. This expresses the idea that if $m_j = 9$ at some index $j$, then either:
 
 - $mM_j = machine("ADD")(rr_1, rr_2)$, with $mM_rr_1$ modeling $pP_3$ and $mM_rr_2$ modeling $pP_7$; in other words, $(m_rr_1, m_rr_2) = (3, 7)$.
 - $mM_j = machine("FMA")(rr_1, rr_2, rr_3)$, with $mM_rr_1$ modeling $pP_3$, $mM_rr_2$ modeling $pP_1$, and $mM_rr_3$ modeling $pP_4$; in other words, $(m_rr_1, m_rr_2, m_rr_3) = (3, 1, 4)$.
@@ -213,7 +213,26 @@ $ φ(pC, pP, pR, mC, D, latency(-), L, K; mM_1, ..., mM_K, m_1, ..., m_K, ell_1,
 
 where the semicolon separates inputs from variables of the formula. To produce a minimal-latency output, we start with $L = 1$ and proceed upwards, checking whether $φ(..., L, K; mM_1, ..., mM_K, m_1, ..., m_K, ell_1, ..., ell_K)$ is satisfiable for some $1 ≤ K ≤ N$. The optimal output program can be read directly from the valuation of $mM_1, ..., mM_K$ in the satisfying assignment.
 
-#pagebreak()
+= Analysis
+
+We evaluate the program on synthetic inputs. Unfortunately, with the reduction as designed, Z3 struggles to check satisfiability beyond input programs of 15-20 instructions. If Rust is installed, the program can be evaluated on test inputs as follows:
+
+```
+$ cargo run --release -- test2.txt
+trying w/ length 1
+trying w/ length 2
+trying w/ length 3
+trying w/ length 4
+0: LOAD_B
+1: LOAD_C
+2: LOAD_A
+3: IMPROVEMENT(2, 0, 1)
+total latency: 4
+```
+
+= AI acknowledgement
+
+We did not use AI in the creation of the project.
 
 #bibliography(
   "works.bib",
