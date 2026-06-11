@@ -1,0 +1,14 @@
+[program]
+
+a = load_a()
+b = load_b()
+c = load_c()
+program = add(add(a, b), c)
+
+[machine]
+
+(#) LOAD_A := load_a()
+(#) LOAD_B := load_b()
+(#) LOAD_C := load_c()
+(#) ADD(a, b) := add(a, b)
+(#) IMPROVEMENT(a, b, c) := add(add(a, b), c)

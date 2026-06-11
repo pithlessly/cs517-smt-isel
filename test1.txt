@@ -1,0 +1,11 @@
+[program]
+
+a = load_a()
+b = load_b()
+program = add(a, b)
+
+[machine]
+
+(#) LOAD_A := load_a()
+(#) LOAD_B := load_b()
+(#) ADD(a, b) := add(a, b)

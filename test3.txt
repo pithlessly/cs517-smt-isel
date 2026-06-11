@@ -1,0 +1,25 @@
+[program]
+
+a = load()
+b = a
+c = a
+2 = a
+4 = a
+discriminant = sub(mul(b, b), mul(mul(4, a), c))
+num1 = add(neg(b), sqrt(discriminant))
+num2 = sub(neg(b), sqrt(discriminant))
+r1 = div(num1, mul(2, a))
+r2 = div(num2, mul(2, a))
+program = pair(r1, r2)
+
+[machine]
+
+(#) LOAD := load()
+(#) ADD(a, b) := add(a, b)
+(#) SUB1(a, b) := sub(a, b)
+(##) MUL(a, b) := mul(a, b)
+(###) DIV(a, b) := div(a, b)
+(#) NEG(a) := neg(a)
+(#) SQRT(a) := sqrt(a)
+(#) PAIR(a, b) := pair(a, b)
+(#) OPTIMIZATION_BEAM(a, b) := div(a, mul(b, b))
