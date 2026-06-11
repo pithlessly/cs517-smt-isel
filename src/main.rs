@@ -34,6 +34,9 @@ fn main() -> Result<()> {
         for (i, node) in stock.nodes.iter().enumerate() {
             println!("{i}: {node:?}");
         }
+
+        let total_latency = extraction::compute_latency(&ir, &stock);
+        println!("total latency: {total_latency}");
     });
 
     Ok(())

@@ -1,4 +1,5 @@
-use crate::ir::{self, DagNode, Ir};
+use crate::ir::{self, Dag, DagNode, Ir};
+use crate::parse_input::Latency;
 use crate::reduction::{OutputSlot, Variables, dt};
 use crate::sorts::SolverSorts;
 
@@ -148,4 +149,23 @@ impl Variables {
             roots: solved_root_witnesses,
         }
     }
+}
+
+pub fn compute_latency(ir: &Ir, dag: &Dag) -> Latency {
+    let mut dispatch_times = vec![];
+    let mut retire_times = vec![];
+    for node in dag.nodes.iter() {
+        let decode = dispatch_times.last().map_or(0, |d| d + 1);
+        let dispatch = node
+            .children
+            .iter()
+            .map(|&i| retire_times[i as usize])
+            .fold(decode, |l, r| l.max(r));
+        let definition_idx = *ir.machine.definition_names.get(&*node.label).unwrap() as usize;
+        let latency = ir.machine.definitions[definition_idx].latency;
+        let retire = dispatch + latency;
+        dispatch_times.push(dispatch);
+        retire_times.push(retire);
+    }
+    retire_times.into_iter().max().unwrap()
 }
